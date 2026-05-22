@@ -1,10 +1,15 @@
 import streamlit as st
 from groq import Groq
 
+# إعداد الصفحة
 st.set_page_config(page_title="Data Cleanse Agent", layout="centered")
 
-# إعداد Client
-client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+# إعداد الـ Client مع حماية المفتاح
+api_key = st.secrets.get("GROQ_API_KEY")
+if not api_key:
+    st.error("مفتاح API غير موجود. يرجى إضافته في إعدادات Secrets.")
+    st.stop()
+client = Groq(api_key=api_key)
 
 st.title("🤖 Data Cleanse Agent")
 
@@ -14,12 +19,12 @@ if "messages" not in st.session_state:
         {"role": "assistant", "content": "أهلاً بك! أنا مساعدك الذكي لتنظيف البيانات. كيف يمكنني خدمتك اليوم؟"}
     ]
 
-# عرض الرسائل في الوسط
+# عرض الرسائل
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# إظهار أزرار الوصول السريع (تظهر في الوسط بمجرد بدء المحادثة)
+# أزرار الوصول السريع (في الوسط)
 col1, col2 = st.columns(2)
 with col1:
     if st.button("🧼 تنظيف بياناتي"):
@@ -30,16 +35,23 @@ with col2:
         st.session_state.messages.append({"role": "user", "content": "أريد إجراء تحليل سريع لبياناتي."})
         st.rerun()
 
-# حقل الإدخال في الوسط (Chat Input)
+# حقل الدردشة الذكي
 if prompt := st.chat_input("اكتب رسالتك هنا..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        response = client.chat.completions.create(
-            model="llama3-8b-8192",
-            messages=st.session_state.messages
-        ).choices[0].message.content
-        st.markdown(response)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        try:
+            # طلب استجابة من Groq
+            stream = client.chat.completions.create(
+                model="llama3-8b-8192",
+                messages=st.session_state.messages
+            )
+            response = stream.choices[0].message.content
+            st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
+        except Exception as e:
+            st.error(f"عذراً، حدث خطأ أثناء الاتصال بـ Groq: {e}")
+            # إضافة رسالة توضيحية للسجل لتجنب تكرار الخطأ
+            st.session_state.messages.append({"role": "assistant", "content": "حدث خطأ تقني، يرجى المحاولة مرة أخرى."})
