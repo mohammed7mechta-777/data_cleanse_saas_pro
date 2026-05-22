@@ -3,10 +3,10 @@ import pandas as pd
 import requests
 from groq import Groq
 
-# 1. إعدادات الواجهة الاحترافية
-st.set_page_config(page_title="Enterprise Data Cleanse", layout="wide")
+# 1. إعدادات الواجهة
+st.set_page_config(page_title="Data Cleanse Pro", layout="wide")
 
-# محاولة تحميل مكتبة الرسوم المتحركة بمرونة لمنع انهيار التطبيق
+# محاولة تحميل مكتبة الرسوم المتحركة بمرونة
 try:
     from streamlit_lottie import st_lottie
     HAS_LOTTIE = True
@@ -19,54 +19,49 @@ def load_lottie(url):
         return r.json() if r.status_code == 200 else None
     except: return None
 
-# 2. إدارة حالة شاشة الإقلاع
+# 2. إدارة شاشة الترحيب (Session State)
 if "show_welcome" not in st.session_state: st.session_state.show_welcome = True
 
 if st.session_state.show_welcome:
-    st.markdown("<h1 style='text-align: center;'>مرحباً بك في Data Cleanse AI</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>Data Cleanse Agent</h1>", unsafe_allow_html=True)
     if HAS_LOTTIE:
-        lottie_welcome = load_lottie("https://assets9.lottiefiles.com/packages/lf20_jcikwtux.json")
-        st_lottie(lottie_welcome, height=300)
+        lottie_url = "https://assets9.lottiefiles.com/packages/lf20_jcikwtux.json"
+        st_lottie(load_lottie(lottie_url), height=300)
+    
     if st.button("ابدأ العمل الآن 🚀", use_container_width=True):
         st.session_state.show_welcome = False
         st.rerun()
 else:
     # 3. المنطق الأساسي للتطبيق
-    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-    st.title("🌐 Enterprise Data Transformation Engine")
+    st.title("🌐 لوحة تحكم البيانات")
+    
+    # إعداد الـ Client (تأكد من إعداد المفتاح في Secrets)
+    api_key = st.secrets.get("GROQ_API_KEY")
+    client = Groq(api_key=api_key) if api_key else None
 
-    def process_file(uploaded_file):
-        try:
-            if uploaded_file.name.endswith('.csv'): return pd.read_csv(uploaded_file)
-            elif uploaded_file.name.endswith('.xlsx'): return pd.read_excel(uploaded_file)
-            elif uploaded_file.name.endswith('.json'): return pd.read_json(uploaded_file)
-        except Exception as e: return None
-
-    uploaded_file = st.file_uploader("📂 ارفع ملف البيانات الخاص بك", type=["csv", "xlsx", "json"])
+    uploaded_file = st.file_uploader("📥 ارفع ملف البيانات الخاص بك", type=["csv", "xlsx"])
 
     if uploaded_file:
-        df = process_file(uploaded_file)
-        if df is not None:
-            st.success("تم تحميل الملف بنجاح!")
+        try:
+            df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith('.csv') else pd.read_excel(uploaded_file)
             st.dataframe(df.head(10))
-            
-            # ميزة التحميل
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 تحميل الملف المعالج", csv, "cleaned_data.csv", "text/csv")
+            st.success("تم رفع الملف بنجاح!")
+        except Exception as e:
+            st.error(f"خطأ في قراءة الملف: {e}")
 
     # 4. المساعد الذكي
     st.markdown("---")
     st.subheader("💬 مستشارك للبيانات")
     if prompt := st.chat_input("اطلب مني تنظيف أو تحليل البيانات..."):
-        with st.chat_message("user"): st.markdown(prompt)
-        with st.chat_message("assistant"):
-            try:
-                response = client.chat.completions.create(
-                    model="llama3-8b-8192",
-                    messages=[{"role": "user", "content": prompt}]
-                ).choices[0].message.content
-                st.markdown(response)
-            except Exception as e:
-                st.error("خطأ في الاتصال بالذكاء الاصطناعي، يرجى التأكد من مفتاح الـ API.")
-
-[Image of software development lifecycle stages]
+        if not client:
+            st.error("لم يتم العثور على مفتاح الـ API في الإعدادات.")
+        else:
+            with st.chat_message("assistant"):
+                try:
+                    response = client.chat.completions.create(
+                        model="llama-3.1-8b-instant", # الموديل المحدث والمتاح
+                        messages=[{"role": "user", "content": prompt}]
+                    ).choices[0].message.content
+                    st.markdown(response)
+                except Exception as e:
+                    st.error("خطأ في الاتصال بالذكاء الاصطناعي، يرجى مراجعة الموديل أو مفتاح الـ API.")
