@@ -1,23 +1,30 @@
 import streamlit as st
 import pandas as pd
 from groq import Groq
-import io
 
 # إعداد واجهة المستخدم
 st.set_page_config(page_title="Data Cleanse SaaS", layout="wide")
-st.title("🚀 Data Cleanse SaaS - الإصدار الاحترافي")
+st.title("🚀 Data Cleanse SaaS - الإصدار التحليلي")
 
-# إعداد مفتاح API من Secrets
+# إعداد مفتاح API
 api_key = st.secrets.get("GROQ_API_KEY")
 client = Groq(api_key=api_key)
 
-# 1. نظام مدقق البيانات (Data Validator)
+# 1. نظام مدقق البيانات
 def validate_and_clean(df):
     df.columns = df.columns.str.strip()
     df = df.dropna(how='all')
     return df
 
-# 2. وظيفة التنظيف بالذكاء الاصطناعي
+# 2. وظيفة التحليل البصري (الميزة الجديدة)
+def generate_insights(df):
+    st.write("### 📊 تحليل سريع للبيانات")
+    # حساب عدد القيم الفارغة في كل عمود
+    missing_data = df.isnull().sum()
+    st.bar_chart(missing_data)
+    st.write("هذا الرسم يوضح توزيع البيانات المفقودة في أعمدة ملفك.")
+
+# 3. وظيفة التنظيف بالذكاء الاصطناعي
 def clean_with_ai(text):
     try:
         chat_completion = client.chat.completions.create(
@@ -28,23 +35,19 @@ def clean_with_ai(text):
     except:
         return text
 
-# 3. واجهة رفع الملفات مع دعم أنواع متعددة
-uploaded_file = st.file_uploader("ارفع ملف البيانات (CSV, Excel, JSON)", type=["csv", "xlsx", "json"])
+# واجهة رفع الملف
+uploaded_file = st.file_uploader("ارفع ملف CSV", type=["csv"])
 
 if uploaded_file is not None:
     try:
-        # قراءة ذكية بناءً على نوع الملف
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
-        elif uploaded_file.name.endswith('.xlsx'):
-            df = pd.read_excel(uploaded_file)
-        else:
-            df = pd.read_json(uploaded_file)
-
-        # حماية من الملفات الفارغة
+        df = pd.read_csv(uploaded_file)
         if not df.empty:
             df = validate_and_clean(df)
-            st.write("### معاينة البيانات قبل المعالجة")
+            
+            # عرض التحليل قبل التنظيف
+            generate_insights(df)
+            
+            st.write("### معاينة البيانات")
             st.dataframe(df.head())
             
             if st.button("تنفيذ المعالجة الذكية"):
@@ -60,13 +63,11 @@ if uploaded_file is not None:
                 
                 cleaned_df = pd.DataFrame(cleaned_data)
                 st.success("تم التنظيف بنجاح!")
-                st.dataframe(cleaned_df.head())
                 
                 # تحميل الملف
                 csv = cleaned_df.to_csv(index=False).encode('utf-8')
                 st.download_button("تحميل البيانات المنظفة", csv, "full_cleaned_data.csv", "text/csv")
         else:
-            st.warning("الملف المرفوع فارغ، يرجى رفع ملف يحتوي على بيانات.")
-            
+            st.warning("الملف المرفوع فارغ.")
     except Exception as e:
-        st.error(f"حدث خطأ أثناء قراءة الملف: {e}")
+        st.error(f"حدث خطأ: {e}")
