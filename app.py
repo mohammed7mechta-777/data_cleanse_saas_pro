@@ -1,55 +1,48 @@
 import streamlit as st
 import pandas as pd
 from groq import Groq
-import os
 
-# 1. إعداد الصفحة
+# 1. إعداد الصفحة والـ Client
 st.set_page_config(page_title="Enterprise Data Agent", layout="wide")
-
-# إعداد المساعد (تأكد من وضع GROQ_API_KEY في Streamlit Secrets)
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
 st.title("🌐 Data Cleanse Enterprise Agent")
 
-# 2. إدارة سجل المحادثة (Persistence)
+# 2. التوجيه الذكي (System Prompt) لتمكينه من الدارجة الجزائرية وغيرها
+SYSTEM_PROMPT = """
+أنت خبير بيانات محترف. مهمتك هي مساعدة المستخدم في تنظيف، تحليل، ومعالجة ملفات البيانات. 
+أنت تفهم جميع اللغات بطلاقة، بما في ذلك الدارجة الجزائرية (مثل: واش راك، نظف البيانات، دير تحليل)، 
+واللغة العربية الفصحى، والإنجليزية. جاوب المستخدم بنفس اللغة التي يتحدث بها. 
+إذا طلب المستخدم تنظيف ملف، اشرح له الخطوات بوضوح وبلهجته.
+"""
+
+# 3. إدارة سجل المحادثة
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-# 3. محرك معالجة الملفات المتعددة
-st.subheader("📂 إدارة ملفات البيانات")
-uploaded_files = st.file_uploader("ارفع ملفاتك (CSV, Excel, JSON)", type=["csv", "xlsx", "json"], accept_multiple_files=True)
+# 4. معالجة الملفات
+uploaded_files = st.file_uploader("📂 ارفع ملفاتك (CSV, Excel, JSON)", type=["csv", "xlsx", "json"], accept_multiple_files=True)
 
-data_frames = {}
-
-if uploaded_files:
-    for file in uploaded_files:
-        try:
-            if file.name.endswith('.csv'): data_frames[file.name] = pd.read_csv(file)
-            elif file.name.endswith('.xlsx'): data_frames[file.name] = pd.read_excel(file)
-            elif file.name.endswith('.json'): data_frames[file.name] = pd.read_json(file)
-            st.write(f"✅ تم تحميل: {file.name}")
-        except Exception as e:
-            st.error(f"خطأ في ملف {file.name}: {e}")
-
-# 4. عرض المحادثة كاملة
+# 5. عرض السجل
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+    if message["role"] != "system": # لا نعرض الـ system prompt للمستخدم
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-# 5. منطق الدردشة مع الذكاء الاصطناعي (محدث للموديل المستقر)
-if prompt := st.chat_input("اطلب مني تنظيف أو تحليل البيانات المرفوعة..."):
+# 6. منطق الدردشة
+if prompt := st.chat_input("أهدر معايا بالدارجة ولا بالعربية..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    with st.chat_message("user"): st.markdown(prompt)
 
     with st.chat_message("assistant"):
         try:
-            # استخدام موديل مستقر ومتاح حالياً
-            response = client.chat.completions.create(
+            # استدعاء الموديل مع سجل المحادثة الكامل
+            completion = client.chat.completions.create(
                 model="llama-3.1-8b-instant",
                 messages=st.session_state.messages
-            ).choices[0].message.content
+            )
+            response = completion.choices[0].message.content
             st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
         except Exception as e:
-            st.error("حدث خطأ أثناء الاتصال بالمساعد. يرجى مراجعة مفتاح API.")
+            st.error("خطأ في الاتصال، تأكد من إعدادات الـ API.")
