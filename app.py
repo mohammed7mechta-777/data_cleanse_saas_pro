@@ -1,23 +1,21 @@
 import streamlit as st
 import pandas as pd
-import requests
-from groq import Groq
 
-# محاولة استيراد المكتبة الإضافية بمرونة
-try:
-    from streamlit_lottie import st_lottie
-    HAS_LOTTIE = True
-except ImportError:
-    HAS_LOTTIE = False
+st.set_page_config(page_title="Data App", layout="wide")
 
-st.set_page_config(page_title="Enterprise Data Cleanse", layout="wide")
+st.title("🚀 Data Cleanse Engine")
 
-# ... (باقي كود التطبيق كما اتفقنا)
+# إزالة الرسوم المتحركة مؤقتاً للتأكد من الإقلاع
+st.info("مرحباً بك في نظام معالجة البيانات.")
 
-if HAS_LOTTIE:
-    # ضع هنا كود الرسوم المتحركة 3D
-    pass
-else:
-    st.info("لم يتم تحميل تأثيرات 3D، تأكد من إضافة streamlit-lottie لملف requirements.txt")
+uploaded_file = st.file_uploader("ارفع ملفك", type=["csv", "xlsx"])
 
-# ... (باقي المنطق الأساسي)
+if uploaded_file:
+    try:
+        if uploaded_file.name.endswith('.csv'):
+            df = pd.read_csv(uploaded_file)
+        else:
+            df = pd.read_excel(uploaded_file)
+        st.dataframe(df)
+    except Exception as e:
+        st.error(f"خطأ: {e}")
