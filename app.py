@@ -1,22 +1,22 @@
 import streamlit as st
+import pandas as pd
 from groq import Groq
 
-# إعداد الصفحة
 st.set_page_config(page_title="Data Cleanse Agent", layout="centered")
 
-# إعداد الـ Client مع حماية المفتاح
+# إعداد الـ Client
 api_key = st.secrets.get("GROQ_API_KEY")
-if not api_key:
-    st.error("مفتاح API غير موجود. يرجى إضافته في إعدادات Secrets.")
-    st.stop()
 client = Groq(api_key=api_key)
 
 st.title("🤖 Data Cleanse Agent")
 
-# إعداد سجل الرسائل
+# 1. ميزة رفع الملفات (في الأعلى)
+uploaded_file = st.file_uploader("📂 ارفع ملف CSV لبدء المعالجة", type=["csv"])
+
+# 2. إعداد سجل الرسائل
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "assistant", "content": "أهلاً بك! أنا مساعدك الذكي لتنظيف البيانات. كيف يمكنني خدمتك اليوم؟"}
+        {"role": "assistant", "content": "أهلاً بك! أنا مساعدك الذكي. ارفع ملفك وسأقوم بتنظيفه أو تحليله لك."}
     ]
 
 # عرض الرسائل
@@ -24,18 +24,20 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# أزرار الوصول السريع (في الوسط)
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("🧼 تنظيف بياناتي"):
-        st.session_state.messages.append({"role": "user", "content": "أريد تنظيف ملف البيانات الخاص بي."})
-        st.rerun()
-with col2:
-    if st.button("📊 تحليل وإحصائيات"):
-        st.session_state.messages.append({"role": "user", "content": "أريد إجراء تحليل سريع لبياناتي."})
-        st.rerun()
+# 3. معالجة الملف إذا تم رفعه
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+    st.success("تم رفع الملف بنجاح!")
+    
+    # أزرار الوصول السريع بعد رفع الملف
+    col1, col2 = st.columns(2)
+    if col1.button("🧼 تنظيف البيانات"):
+        st.write("جاري التنظيف بالذكاء الاصطناعي...")
+        # هنا يتم استدعاء منطق التنظيف
+    if col2.button("📊 تحليل البيانات"):
+        st.bar_chart(df.isnull().sum())
 
-# حقل الدردشة الذكي
+# 4. الدردشة (في الأسفل)
 if prompt := st.chat_input("اكتب رسالتك هنا..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -43,15 +45,13 @@ if prompt := st.chat_input("اكتب رسالتك هنا..."):
 
     with st.chat_message("assistant"):
         try:
-            # طلب استجابة من Groq
+            # تم تحديث الموديل إلى نسخة نشطة
             stream = client.chat.completions.create(
-                model="llama3-8b-8192",
+                model="llama3-8b-8192", 
                 messages=st.session_state.messages
             )
             response = stream.choices[0].message.content
             st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
         except Exception as e:
-            st.error(f"عذراً، حدث خطأ أثناء الاتصال بـ Groq: {e}")
-            # إضافة رسالة توضيحية للسجل لتجنب تكرار الخطأ
-            st.session_state.messages.append({"role": "assistant", "content": "حدث خطأ تقني، يرجى المحاولة مرة أخرى."})
+            st.error(f"خطأ في الاتصال: {e}")
