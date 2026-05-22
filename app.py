@@ -1,21 +1,72 @@
 import streamlit as st
 import pandas as pd
+import requests
+from groq import Groq
 
-st.set_page_config(page_title="Data App", layout="wide")
+# 1. إعدادات الواجهة الاحترافية
+st.set_page_config(page_title="Enterprise Data Cleanse", layout="wide")
 
-st.title("🚀 Data Cleanse Engine")
+# محاولة تحميل مكتبة الرسوم المتحركة بمرونة لمنع انهيار التطبيق
+try:
+    from streamlit_lottie import st_lottie
+    HAS_LOTTIE = True
+except ImportError:
+    HAS_LOTTIE = False
 
-# إزالة الرسوم المتحركة مؤقتاً للتأكد من الإقلاع
-st.info("مرحباً بك في نظام معالجة البيانات.")
-
-uploaded_file = st.file_uploader("ارفع ملفك", type=["csv", "xlsx"])
-
-if uploaded_file:
+def load_lottie(url):
     try:
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
-        else:
-            df = pd.read_excel(uploaded_file)
-        st.dataframe(df)
-    except Exception as e:
-        st.error(f"خطأ: {e}")
+        r = requests.get(url)
+        return r.json() if r.status_code == 200 else None
+    except: return None
+
+# 2. إدارة حالة شاشة الإقلاع
+if "show_welcome" not in st.session_state: st.session_state.show_welcome = True
+
+if st.session_state.show_welcome:
+    st.markdown("<h1 style='text-align: center;'>مرحباً بك في Data Cleanse AI</h1>", unsafe_allow_html=True)
+    if HAS_LOTTIE:
+        lottie_welcome = load_lottie("https://assets9.lottiefiles.com/packages/lf20_jcikwtux.json")
+        st_lottie(lottie_welcome, height=300)
+    if st.button("ابدأ العمل الآن 🚀", use_container_width=True):
+        st.session_state.show_welcome = False
+        st.rerun()
+else:
+    # 3. المنطق الأساسي للتطبيق
+    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+    st.title("🌐 Enterprise Data Transformation Engine")
+
+    def process_file(uploaded_file):
+        try:
+            if uploaded_file.name.endswith('.csv'): return pd.read_csv(uploaded_file)
+            elif uploaded_file.name.endswith('.xlsx'): return pd.read_excel(uploaded_file)
+            elif uploaded_file.name.endswith('.json'): return pd.read_json(uploaded_file)
+        except Exception as e: return None
+
+    uploaded_file = st.file_uploader("📂 ارفع ملف البيانات الخاص بك", type=["csv", "xlsx", "json"])
+
+    if uploaded_file:
+        df = process_file(uploaded_file)
+        if df is not None:
+            st.success("تم تحميل الملف بنجاح!")
+            st.dataframe(df.head(10))
+            
+            # ميزة التحميل
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button("📥 تحميل الملف المعالج", csv, "cleaned_data.csv", "text/csv")
+
+    # 4. المساعد الذكي
+    st.markdown("---")
+    st.subheader("💬 مستشارك للبيانات")
+    if prompt := st.chat_input("اطلب مني تنظيف أو تحليل البيانات..."):
+        with st.chat_message("user"): st.markdown(prompt)
+        with st.chat_message("assistant"):
+            try:
+                response = client.chat.completions.create(
+                    model="llama3-8b-8192",
+                    messages=[{"role": "user", "content": prompt}]
+                ).choices[0].message.content
+                st.markdown(response)
+            except Exception as e:
+                st.error("خطأ في الاتصال بالذكاء الاصطناعي، يرجى التأكد من مفتاح الـ API.")
+
+[Image of software development lifecycle stages]
