@@ -1,0 +1,32 @@
+# Financial Data
+yfinance==0.2.32
+pandas==2.1.3
+numpy==1.26.2
+
+# Video Processing
+moviepy==1.0.3
+ffmpeg-python==0.2.1
+pillow==10.1.0
+
+# Data Visualization
+matplotlib==3.8.2
+plotly==5.18.0
+
+# AI & Text Generation
+openai==1.3.5
+requests==2.31.0
+
+# Stock Footage APIs
+pexels-api==1.0.2
+
+# YouTube Upload
+google-api-python-client==1.12.5
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
+
+# Scheduling & Orchestration
+APScheduler==3.10.4
+
+# Utilities
+python-dotenv==1.0.0
+pyyaml==6.0.1
