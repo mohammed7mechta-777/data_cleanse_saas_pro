@@ -1,63 +1,62 @@
 import streamlit as st
 import pandas as pd
-import logging
+import json
+import requests
 from groq import Groq
-import time
+from streamlit_lottie import st_lottie
 
-# إعداد السجلات (Enterprise Logging)
-logging.basicConfig(level=logging.INFO, filename='app_logs.log', format='%(asctime)s - %(levelname)s - %(message)s')
+# 1. إعداد الواجهة الاحترافية
+st.set_page_config(page_title="Enterprise Data Cleanse", layout="wide")
 
-st.set_page_config(page_title="Enterprise Data Cleanse", layout="centered")
+def load_lottie(url):
+    r = requests.get(url)
+    if r.status_code != 200: return None
+    return r.json()
 
-client = Groq(api_key=st.secrets.get("GROQ_API_KEY"))
+# رسوم متحركة 3D (تضفي طابع الاحترافية)
+lottie_data = load_lottie("https://assets5.lottiefiles.com/packages/lf20_4cup433w.json")
 
-st.title("🚀 Data Cleanse Enterprise")
+st.title("🌐 Enterprise Data Transformation Engine")
+st_lottie(lottie_data, height=200, key="data_animation")
 
-# إدارة حالة الجلسة للتاريخ
-if "history" not in st.session_state:
-    st.session_state.history = []
+# 2. إعداد الـ Client
+client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-# 1. نظام رفع الملفات مع التحقق
-uploaded_file = st.file_uploader("📥 ارفع ملف البيانات", type=["csv"])
+# 3. محرك القراءة الذكي
+def process_file(uploaded_file):
+    ext = uploaded_file.name.split('.')[-1]
+    if ext == 'csv': return pd.read_csv(uploaded_file)
+    elif ext == 'xlsx': return pd.read_excel(uploaded_file)
+    elif ext == 'json': return pd.read_json(uploaded_file)
+    return None
+
+# 4. الواجهة المركزية
+uploaded_file = st.file_uploader("📂 اسحب ملف البيانات الخاص بك", type=["csv", "xlsx", "json"])
 
 if uploaded_file:
-    try:
-        df = pd.read_csv(uploaded_file)
-        st.write(f"تم تحميل الملف: {uploaded_file.name} ({len(df)} صف)")
+    df = process_file(uploaded_file)
+    if df is not None:
+        st.success(f"تم تحميل الملف: {uploaded_file.name} - {df.shape[0]} سجل")
+        
+        # إجراءات احترافية
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("🧼 تنظيف الذكاء الاصطناعي"):
+                st.info("جاري المعالجة المتقدمة...")
+                # هنا منطق المعالجة
+        with col2:
+            st.download_button("📥 تحميل CSV", df.to_csv(), "cleaned_data.csv", "text/csv")
+        with col3:
+            st.metric("عدد الأعمدة", df.shape[1])
 
-        # أزرار الإجراءات
-        if st.button("⚙️ بدء التنظيف الاحترافي"):
-            with st.spinner("جاري معالجة البيانات على دفعات..."):
-                # معالجة ذكية على دفعات (Batching) لتجنب انهيار السيرفر
-                results = []
-                for i in range(0, min(len(df), 20), 5): # معالجة أول 20 صف كمثال
-                    chunk = df.iloc[i:i+5]
-                    # استدعاء الذكاء الاصطناعي (تمت إضافة تأخير بسيط لمنع RateLimit)
-                    time.sleep(1) 
-                    results.append(chunk)
-                    logging.info(f"تمت معالجة الدفعة {i}")
-                
-                st.session_state.history.append({"file": uploaded_file.name, "status": "Cleaned"})
-                st.success("تم التنظيف بنجاح!")
-                st.dataframe(pd.concat(results))
-
-    except Exception as e:
-        logging.error(f"خطأ في المعالجة: {e}")
-        st.error("حدث خطأ تقني، تم تسجيله في سجلات النظام.")
-
-# 2. عرض سجل العمليات (ميزة مستوى الشركات)
-with st.expander("📜 سجل العمليات السابقة"):
-    for entry in st.session_state.history:
-        st.write(f"تم تنظيف ملف: {entry['file']} - الحالة: {entry['status']}")
-
-# 3. دردشة المساعد الذكي (تم تحديث الموديل لموديل أكثر قوة)
-if prompt := st.chat_input("اسألني عن بياناتك..."):
+# 5. وكيل الدردشة الذكي في المنتصف
+st.markdown("---")
+st.subheader("💬 مستشارك للبيانات")
+if prompt := st.chat_input("اطلب مني تعديل البيانات..."):
+    with st.chat_message("user"): st.markdown(prompt)
     with st.chat_message("assistant"):
-        try:
-            response = client.chat.completions.create(
-                model="llama3-70b-8192", # موديل أقوى للمهام المؤسسية
-                messages=[{"role": "user", "content": prompt}]
-            ).choices[0].message.content
-            st.markdown(response)
-        except Exception as e:
-            st.error("خدمة المساعد الذكي غير متاحة حالياً.")
+        response = client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[{"role": "user", "content": prompt}]
+        ).choices[0].message.content
+        st.markdown(response)
